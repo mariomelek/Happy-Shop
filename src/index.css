@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@theme {
+  /* ألوان البراند */
+  --color-brand-dark-green: #0b3d1d;
+  --color-brand-gold: #c5a059;
+  --color-brand-soft-white: #f8f9f8;
+  --color-brand-gray: #8e8e8e;
+  --color-brand-deep: #052410;
+
+  /* الخطوط */
+  --font-serif: "Playfair Display", serif;
+
+  /* إضافة الأنيميشن لسمة الثيم */
+  --animate-marquee: marquee 25s linear infinite;
+
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+}
+
+/* تحسينات إضافية للمتصفح */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* إخفاء شريط التمرير للفئات مع بقاء ميزة السحب */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
