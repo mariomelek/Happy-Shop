@@ -9,12 +9,17 @@ import CartList from "../components/cart/CartList";
 import SearchResults from "../pages/SearchResults";
 import Checkout from "../pages/Checkout"; // استيراد صفحة الـ Checkout
 import Wishes from "../pages/Wishes";
+import AboutUs from "../pages/AboutUs";
+import Login from "../pages/Login";
+import Register from "../pages/Register";
+import ForgetPassword from "../pages/ForgetPassword";
+import Success from "../pages/Success";
+import Orders from "../pages/Orders";
 
 const AppRouter = () => {
   return (
     <Router>
       <Navbar />
-
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -23,6 +28,14 @@ const AppRouter = () => {
           <Route path="/cart" element={<CartList />} />
           <Route path="/search" element={<SearchResults />} />
           <Route path="/wishes" element={<Wishes />} />
+          <Route path="/aboutus" element={<AboutUs />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forget-password" element={<ForgetPassword />} />
+          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/success" element={<Success />} />
+
+          <Route path="/orders" element={<Orders />} />
 
           {/* مسار صفحة الدفع الجديد */}
           <Route path="/checkout" element={<Checkout />} />

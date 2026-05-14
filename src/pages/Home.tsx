@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
-
-// الاستيرادات الصحيحة للهوكس
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 
@@ -20,11 +18,16 @@ const Home: React.FC = () => {
   const [products, setProducts] = useState<DummyProduct[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadingMore, setLoadingMore] = useState<boolean>(false); // حالة خاصة لتحميل المزيد
   const [activeCategory, setActiveCategory] = useState<string>("All");
+  const [skip, setSkip] = useState<number>(0); // لتحديد عدد المنتجات التي تم تخطيها
+  const [total, setTotal] = useState<number>(0); // إجمالي المنتجات المتاحة
 
+  const limit = 12; // عدد المنتجات في كل طلب
   const { addToWishlist, isInWishlist } = useWishlist();
   const { addToCart } = useCart();
 
+  // جلب الفئات عند التحميل الأول فقط
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -39,24 +42,48 @@ const Home: React.FC = () => {
     fetchCategories();
   }, []);
 
+  // جلب المنتجات عند تغيير الفئة أو عند طلب "تحميل المزيد"
   useEffect(() => {
     const fetchProducts = async () => {
-      setLoading(true);
+      if (skip === 0)
+        setLoading(true); // لودينج كامل فقط عند البداية أو تغيير الفئة
+      else setLoadingMore(true); // لودينج صغير عند تحميل المزيد
+
       try {
         const url =
           activeCategory === "All"
-            ? "https://dummyjson.com/products?limit=12"
-            : `https://dummyjson.com/products/category/${activeCategory}`;
+            ? `https://dummyjson.com/products?limit=${limit}&skip=${skip}`
+            : `https://dummyjson.com/products/category/${activeCategory}?limit=${limit}&skip=${skip}`;
+
         const response = await axios.get(url);
-        setProducts(response.data.products);
+
+        if (skip === 0) {
+          setProducts(response.data.products); // استبدال المنتجات عند تغيير الفئة
+        } else {
+          setProducts((prev) => [...prev, ...response.data.products]); // إضافة المنتجات الجديدة للموجودة
+        }
+
+        setTotal(response.data.total);
       } catch (error) {
         console.error("Error fetching products:", error);
       } finally {
         setLoading(false);
+        setLoadingMore(false);
       }
     };
     fetchProducts();
-  }, [activeCategory]);
+  }, [activeCategory, skip]);
+
+  // إعادة ضبط الـ skip عند تغيير الفئة
+  const handleCategoryChange = (cat: string) => {
+    setActiveCategory(cat);
+    setSkip(0);
+    setProducts([]);
+  };
+
+  const handleLoadMore = () => {
+    setSkip((prev) => prev + limit);
+  };
 
   return (
     <div className="min-h-screen bg-white font-sans text-brand-deep">
@@ -110,7 +137,7 @@ const Home: React.FC = () => {
                   {/* 1. زر الإضافة للسلة (يظهر عند الـ Hover) */}
                   <button
                     onClick={() => addToCart(product)}
-                    className="absolute bottom-4 inset-x-4 bg-brand-deep text-white py-3 rounded-2xl font-bold text-sm opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-y-4 group-hover:translate-y-0 z-30 shadow-2xl hover:bg-brand-gold"
+                    className="absolute bottom-4 inset-x-4 bg-brand-deep hover:cursor-pointer text-white py-3 rounded-2xl font-bold text-sm opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-y-4 group-hover:translate-y-0 z-30 shadow-2xl hover:bg-brand-gold"
                   >
                     Add to Cart
                   </button>
@@ -238,6 +265,25 @@ const Home: React.FC = () => {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+        {/* زر "عرض المزيد" التفاعلي */}
+        {products.length < total && (
+          <div className="mt-16 flex justify-center">
+            <button
+              onClick={handleLoadMore}
+              disabled={loadingMore}
+              className="group relative hover:cursor-pointer px-12 py-4 bg-brand-dark-green text-white rounded-full font-bold overflow-hidden transition-all hover:bg-brand-gold disabled:bg-gray-300"
+            >
+              <span className={loadingMore ? "opacity-0" : "opacity-100"}>
+                Load More Items
+              </span>
+              {loadingMore && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              )}
+            </button>
           </div>
         )}
       </main>

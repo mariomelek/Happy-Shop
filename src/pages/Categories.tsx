@@ -1,13 +1,17 @@
-// src/pages/Categories.tsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { useCart } from "../context/CartContext";
 
 const Categories: React.FC = () => {
   const [categories, setCategories] = useState<string[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [loading, setLoading] = useState<boolean>(true);
+
+  const { addToCart } = useCart(); // دالة الإضافة للسلة
+  const { t } = useTranslation();
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -52,12 +56,12 @@ const Categories: React.FC = () => {
         </h1>
 
         {/* أزرار الفئات */}
-        <div className="flex flex-wrap justify-center gap-3 mb-12">
+        <div className="flex flex-wrap justify-center gap-3 mb-12 no-scrollbar">
           <button
             onClick={() => setActiveCategory("all")}
-            className={`px-6 py-2 rounded-full border transition text-xs font-bold tracking-widest ${
+            className={`px-6 py-2 rounded-full border transition-all text-xs font-bold tracking-widest ${
               activeCategory === "all"
-                ? "bg-brand-dark-green text-white border-brand-dark-green shadow-md"
+                ? "bg-brand-dark-green text-white border-brand-dark-green shadow-md scale-105"
                 : "bg-gray-50 text-brand-deep hover:border-brand-gold"
             }`}
           >
@@ -68,9 +72,9 @@ const Categories: React.FC = () => {
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`px-6 py-2 rounded-full border transition uppercase text-xs font-bold tracking-widest ${
+              className={`px-6 py-2 rounded-full border transition-all uppercase text-xs font-bold tracking-widest ${
                 activeCategory === cat
-                  ? "bg-brand-dark-green text-white border-brand-dark-green shadow-md"
+                  ? "bg-brand-dark-green text-white border-brand-dark-green shadow-md scale-105"
                   : "bg-gray-50 text-brand-deep hover:border-brand-gold"
               }`}
             >
@@ -81,60 +85,100 @@ const Categories: React.FC = () => {
 
         {/* عرض المنتجات */}
         {loading ? (
-          <div className="text-center font-serif text-brand-gold animate-pulse text-xl">
+          <div className="text-center font-serif text-brand-gold animate-pulse text-xl py-20">
             Unveiling {activeCategory} collection...
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
             {products.map((product) => (
-              <Link
-                to={`/product/${product.id}`}
-                key={product.id}
-                className="group cursor-pointer block"
-              >
-                <div className="relative aspect-[3/4] bg-brand-soft-white rounded-[2rem] overflow-hidden mb-4 transition-all duration-500 group-hover:shadow-xl">
-                  {/* شارة الخصم */}
-                  {product.discountPercentage > 0 && (
-                    <div className="absolute top-4 left-4 z-10 bg-brand-dark-green/90 backdrop-blur-sm text-white text-[10px] font-bold py-1 px-4 rounded-full">
-                      {Math.round(product.discountPercentage)}% OFF
-                    </div>
-                  )}
+              <div key={product.id} className="group relative">
+                <div className="relative aspect-[3/4] bg-brand-soft-white rounded-[2.5rem] overflow-hidden mb-4 transition-all duration-500 group-hover:shadow-2xl">
+                  {/* أزرار الإجراءات السريعة (القلب والسلة) */}
+                  <div className="absolute top-5 right-5 z-20 flex flex-col gap-3  group-hover:opacity-100 transition-all duration-500">
+                    {/* زر القلب */}
+                    <button className="bg-white p-3 rounded-full shadow-lg hover:text-red-500 hover:text-white transition-colors group/heart">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                        />
+                      </svg>
+                    </button>
 
-                  <img
-                    src={product.thumbnail}
-                    alt={product.title}
-                    className="w-full h-full object-contain p-6 group-hover:scale-110 transition duration-700"
-                  />
-
-                  {/* العداد (Timer) يظهر عند الـ Hover */}
-                  <div className="absolute bottom-4 inset-x-4 bg-brand-dark-green/90 backdrop-blur-md text-white p-3 rounded-2xl flex justify-around text-center  group-hover:opacity-100 transition-all duration-500 transform translate-y-4 group-hover:translate-y-0">
-                    <div>
-                      <p className="text-xs font-bold">02</p>
-                      <p className="text-[7px] opacity-70 uppercase tracking-tighter">
-                        Days
-                      </p>
-                    </div>
-                    <div className="w-[1px] h-6 bg-white/20 self-center"></div>
-                    <div>
-                      <p className="text-xs font-bold">14</p>
-                      <p className="text-[7px] opacity-70 uppercase tracking-tighter">
-                        Hrs
-                      </p>
-                    </div>
-                    <div className="w-[1px] h-6 bg-white/20 self-center"></div>
-                    <div>
-                      <p className="text-xs font-bold">55</p>
-                      <p className="text-[7px] opacity-70 uppercase tracking-tighter">
-                        Mins
-                      </p>
-                    </div>
+                    {/* زر السلة */}
+                    <button
+                      onClick={() => addToCart(product)}
+                      className="bg-white p-3 rounded-full shadow-lg hover:bg-brand-dark-green hover:text-white transition-colors"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+                        />
+                      </svg>
+                    </button>
                   </div>
+
+                  <Link to={`/product/${product.id}`} className="block h-full">
+                    {/* شارة الخصم */}
+                    {product.discountPercentage > 0 && (
+                      <div className="absolute top-5 left-5 z-10 bg-brand-dark-green text-white text-[10px] font-bold py-1 px-3 rounded-full shadow-sm">
+                        {Math.round(product.discountPercentage)}% OFF
+                      </div>
+                    )}
+
+                    <img
+                      src={product.thumbnail}
+                      alt={product.title}
+                      className="w-full h-full object-contain p-8 group-hover:scale-110 transition duration-700"
+                    />
+
+                    {/* العداد (Timer) */}
+                    <div className="absolute bottom-4 inset-x-4 bg-brand-dark-green/90 backdrop-blur-md text-white p-3 rounded-2xl flex justify-around text-center  group-hover:opacity-100 transition-all duration-500 transform translate-y-4 group-hover:translate-y-0">
+                      <div>
+                        <p className="text-xs font-bold">02</p>
+                        <p className="text-[7px] opacity-70 uppercase tracking-tighter">
+                          Days
+                        </p>
+                      </div>
+                      <div className="w-[1px] h-6 bg-white/20 self-center"></div>
+                      <div>
+                        <p className="text-xs font-bold">14</p>
+                        <p className="text-[7px] opacity-70 uppercase tracking-tighter">
+                          Hrs
+                        </p>
+                      </div>
+                      <div className="w-[1px] h-6 bg-white/20 self-center"></div>
+                      <div>
+                        <p className="text-xs font-bold">55</p>
+                        <p className="text-[7px] opacity-70 uppercase tracking-tighter">
+                          Mins
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
                 </div>
 
                 {/* تفاصيل المنتج */}
-                <div className="px-2">
+                <div className="px-3">
                   <div className="flex justify-between items-start mb-1">
-                    <h3 className="font-bold text-brand-deep truncate flex-1 group-hover:text-brand-gold transition text-sm">
+                    <h3 className="font-bold text-brand-deep truncate flex-1 group-hover:text-brand-gold transition text-sm tracking-tight">
                       {product.title}
                     </h3>
                     <div className="flex items-center gap-1 ml-2">
@@ -149,7 +193,7 @@ const Categories: React.FC = () => {
                       ${product.price}
                     </span>
                     {product.discountPercentage > 0 && (
-                      <span className="text-gray-400 text-xs line-through">
+                      <span className="text-gray-400 text-xs line-through font-light">
                         $
                         {(
                           product.price /
@@ -159,7 +203,7 @@ const Categories: React.FC = () => {
                     )}
                   </div>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}
