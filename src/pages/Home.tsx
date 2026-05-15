@@ -1,8 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
+import toast from "react-hot-toast";
+import { arrayRemove, arrayUnion, doc, updateDoc } from "firebase/firestore";
+import { auth, db } from "../firebase";
 
 export interface DummyProduct {
   id: number;
@@ -18,16 +21,16 @@ const Home: React.FC = () => {
   const [products, setProducts] = useState<DummyProduct[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [loadingMore, setLoadingMore] = useState<boolean>(false); // حالة خاصة لتحميل المزيد
+  const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [activeCategory, setActiveCategory] = useState<string>("All");
-  const [skip, setSkip] = useState<number>(0); // لتحديد عدد المنتجات التي تم تخطيها
-  const [total, setTotal] = useState<number>(0); // إجمالي المنتجات المتاحة
+  const [skip, setSkip] = useState<number>(0);
+  const [total, setTotal] = useState<number>(0);
 
-  const limit = 12; // عدد المنتجات في كل طلب
+  const limit = 12;
   const { addToWishlist, isInWishlist } = useWishlist();
   const { addToCart } = useCart();
 
-  // جلب الفئات عند التحميل الأول فقط
+  // جلب الفئات - تم تحسينها لتنفيذها مرة واحدة فقط
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -42,12 +45,13 @@ const Home: React.FC = () => {
     fetchCategories();
   }, []);
 
-  // جلب المنتجات عند تغيير الفئة أو عند طلب "تحميل المزيد"
+  // جلب المنتجات - مع إضافة AbortController لإلغاء الطلبات المعلقة عند تغيير الفئة
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchProducts = async () => {
-      if (skip === 0)
-        setLoading(true); // لودينج كامل فقط عند البداية أو تغيير الفئة
-      else setLoadingMore(true); // لودينج صغير عند تحميل المزيد
+      if (skip === 0) setLoading(true);
+      else setLoadingMore(true);
 
       try {
         const url =
@@ -55,38 +59,109 @@ const Home: React.FC = () => {
             ? `https://dummyjson.com/products?limit=${limit}&skip=${skip}`
             : `https://dummyjson.com/products/category/${activeCategory}?limit=${limit}&skip=${skip}`;
 
-        const response = await axios.get(url);
+        const response = await axios.get(url, { signal: controller.signal });
 
-        if (skip === 0) {
-          setProducts(response.data.products); // استبدال المنتجات عند تغيير الفئة
-        } else {
-          setProducts((prev) => [...prev, ...response.data.products]); // إضافة المنتجات الجديدة للموجودة
-        }
-
+        setProducts((prev) =>
+          skip === 0
+            ? response.data.products
+            : [...prev, ...response.data.products],
+        );
         setTotal(response.data.total);
       } catch (error) {
-        console.error("Error fetching products:", error);
+        if (!axios.isCancel(error)) {
+          toast.error("Failed to load products");
+        }
       } finally {
         setLoading(false);
         setLoadingMore(false);
       }
     };
+
     fetchProducts();
+    return () => controller.abort(); // تنظيف الطلب عند مسح المكون
   }, [activeCategory, skip]);
 
-  // إعادة ضبط الـ skip عند تغيير الفئة
+  // دالة الإضافة للسلة - تحسين الأداء بـ useCallback
+  const handleAddToCart = useCallback(
+    (product: DummyProduct) => {
+      addToCart(product);
+      toast.success(`${product.title} added to cart!`, {
+        style: {
+          borderRadius: "12px",
+          background: "#064e3b",
+          color: "#fff",
+          fontSize: "14px",
+          fontWeight: "500",
+        },
+        iconTheme: {
+          primary: "#C5A059",
+          secondary: "#fff",
+        },
+      });
+    },
+    [addToCart],
+  );
+
+  // دالة الإضافة للمفضلة - تحسين الأداء بـ useCallback
+  const handleWishlist = useCallback(
+    async (product: DummyProduct) => {
+      const user = auth.currentUser;
+
+      // 1. التحقق من تسجيل الدخول
+      if (!user) {
+        toast.error("Please login to sync your wishlist", {
+          style: { borderRadius: "10px", background: "#333", color: "#fff" },
+        });
+        return;
+      }
+
+      const userRef = doc(db, "users", user.uid);
+      const alreadyIn = isInWishlist(product.id);
+
+      try {
+        if (alreadyIn) {
+          // 2. إذا كان موجوداً: نحذفه من الفايرستور
+          await updateDoc(userRef, {
+            wishlist: arrayRemove(product.id),
+          });
+
+          // تحديث الحالة محلياً (Context)
+          addToWishlist(product);
+          toast("Removed from wishlist", { icon: "📁" });
+        } else {
+          // 3. إذا لم يكن موجوداً: نضيفه للفايرستور
+          await updateDoc(userRef, {
+            wishlist: arrayUnion(product.id),
+          });
+
+          // تحديث الحالة محلياً (Context)
+          addToWishlist(product);
+          toast.success("Saved to your profile!", {
+            icon: "❤️",
+            style: {
+              borderRadius: "12px",
+              background: "#064e3b",
+              color: "#fff",
+            },
+          });
+        }
+      } catch (error) {
+        console.error("Firestore Error:", error);
+        toast.error("Sync error. Please try again.");
+      }
+    },
+    [addToWishlist, isInWishlist],
+  );
+
   const handleCategoryChange = (cat: string) => {
+    if (cat === activeCategory) return; // منع إعادة التحميل إذا كانت نفس الفئة
     setActiveCategory(cat);
     setSkip(0);
     setProducts([]);
   };
 
-  const handleLoadMore = () => {
-    setSkip((prev) => prev + limit);
-  };
-
   return (
-    <div className="min-h-screen bg-white font-sans text-brand-deep">
+    <div className="min-h-screen mt-15 bg-white font-sans text-brand-deep">
       <header className="max-w-7xl mx-auto px-6 pt-12">
         <p className="text-brand-gray text-sm mb-2">Exclusive Collection</p>
         <h1 className="text-5xl font-serif">
@@ -94,13 +169,12 @@ const Home: React.FC = () => {
         </h1>
       </header>
 
-      {/* شريط الفئات */}
       <nav className="max-w-7xl mx-auto px-6 mt-10 flex gap-3 overflow-x-auto pb-4 no-scrollbar border-b border-gray-50">
         {categories.map((cat) => (
           <button
             key={cat}
-            onClick={() => setActiveCategory(cat)}
-            className={`px-6 py-2 rounded-full text-sm whitespace-nowrap transition capitalize ${
+            onClick={() => handleCategoryChange(cat)}
+            className={`px-6 py-2 rounded-full text-sm whitespace-nowrap transition-all duration-300 capitalize ${
               activeCategory === cat
                 ? "bg-brand-dark-green text-white shadow-md"
                 : "bg-brand-soft-white text-brand-deep border border-gray-100 hover:border-brand-gold"
@@ -113,7 +187,7 @@ const Home: React.FC = () => {
 
       <main className="max-w-7xl mx-auto px-6 mt-12 pb-20">
         {loading ? (
-          <div className="h-64 flex items-center justify-center font-serif text-xl animate-pulse text-brand-gold">
+          <div className="h-64 flex items-center justify-center font-serif text-xl animate-pulse text-brand-dark-green">
             Curating your selection...
           </div>
         ) : (
@@ -125,24 +199,22 @@ const Home: React.FC = () => {
                     <img
                       src={product.thumbnail}
                       alt={product.title}
+                      loading="lazy" // تحسين أداء تحميل الصور
                       className="w-full h-full object-contain p-6 group-hover:scale-110 transition duration-700"
                     />
                   </Link>
 
-                  {/* شارة الخصم */}
                   <div className="absolute top-4 left-4 bg-brand-dark-green/90 backdrop-blur-sm text-white text-[10px] py-1 px-3 rounded-full z-10 font-bold uppercase">
                     {Math.round(product.discountPercentage)}% off
                   </div>
 
-                  {/* 1. زر الإضافة للسلة (يظهر عند الـ Hover) */}
                   <button
-                    onClick={() => addToCart(product)}
-                    className="absolute bottom-4 inset-x-4 bg-brand-deep hover:cursor-pointer text-white py-3 rounded-2xl font-bold text-sm opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-y-4 group-hover:translate-y-0 z-30 shadow-2xl hover:bg-brand-gold"
+                    onClick={() => handleAddToCart(product)}
+                    className="absolute bottom-4 inset-x-4 bg-brand-deep hover:cursor-pointer text-white py-3 rounded-2xl font-bold text-sm opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-y-4 group-hover:translate-y-0 z-30 shadow-2xl hover:bg-brand-dark-green"
                   >
                     Add to Cart
                   </button>
 
-                  {/* 2. العداد (يختفي عند الـ Hover) */}
                   <div className="absolute bottom-4 inset-x-4 bg-brand-dark-green/90 backdrop-blur-md text-white p-3 rounded-2xl flex justify-around text-center transition-all duration-500 z-20 group-hover:opacity-0 group-hover:pointer-events-none">
                     <div>
                       <p className="text-xs font-bold">02</p>
@@ -166,15 +238,14 @@ const Home: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* زر المفضلة */}
                   <button
                     onClick={(e) => {
                       e.preventDefault();
-                      addToWishlist(product);
+                      handleWishlist(product);
                     }}
-                    className="absolute top-2 right-2 z-20"
+                    className="absolute top-2 right-2 z-20 outline-none"
                   >
-                    <div className="w-10 h-10 bg-white/70 backdrop-blur-md rounded-full flex items-center justify-center shadow-sm hover:scale-110 transition-all duration-300">
+                    <div className="w-10 h-10 bg-white/70 backdrop-blur-md rounded-full flex items-center justify-center shadow-sm hover:scale-110 active:scale-95 transition-all duration-300">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         fill={isInWishlist(product.id) ? "#ef4444" : "none"}
@@ -183,7 +254,7 @@ const Home: React.FC = () => {
                         stroke={
                           isInWishlist(product.id) ? "#ef4444" : "currentColor"
                         }
-                        className="w-5 h-5"
+                        className="w-5 h-5 transition-colors duration-300"
                       >
                         <path
                           strokeLinecap="round"
@@ -195,14 +266,12 @@ const Home: React.FC = () => {
                   </button>
                 </div>
 
-                {/* تفاصيل المنتج السفلى */}
                 <div className="px-2">
                   <div className="flex justify-between items-center mb-1">
                     <p className="text-[14px] text-brand-gold font-bold uppercase tracking-tighter">
                       {product.category.replace(/-/g, " ")}
                     </p>
                     <div className="flex items-center gap-0.5">
-                      {/* النجوم (Stars) */}
                       <div className="flex items-center">
                         {[...Array(5)].map((_, i) => (
                           <svg
@@ -220,13 +289,12 @@ const Home: React.FC = () => {
                     </div>
                   </div>
 
-                  <h3 className="text-brand-deep font-bold truncate group-hover:text-brand-gold transition text-lg">
+                  <h3 className="text-brand-deep font-bold truncate group-hover:text-brand-gold transition text-lg mb-1">
                     {product.title}
                   </h3>
 
                   <div className="flex justify-between items-end mt-2">
                     <div className="flex flex-col">
-                      {/* السعر القديم (مشطوب) يظهر فقط إذا كان هناك خصم */}
                       {product.discountPercentage > 0 && (
                         <span className="text-xs text-gray-400 line-through mb-0.5">
                           $
@@ -236,17 +304,13 @@ const Home: React.FC = () => {
                           ).toFixed(2)}
                         </span>
                       )}
-
-                      {/* السعر الحالي (بعد الخصم) */}
                       <p className="text-brand-dark-green font-serif font-bold text-xl leading-none">
                         ${product.price.toFixed(2)}
                       </p>
                     </div>
-
-                    {/* زر الإضافة السريع */}
                     <button
-                      onClick={() => addToCart(product)}
-                      className="bg-brand-soft-white p-2 rounded-full hover:bg-brand-gold hover:text-white transition-colors text-brand-deep"
+                      onClick={() => handleAddToCart(product)}
+                      className="bg-brand-soft-white p-2 rounded-full hover:bg-brand-gold hover:text-white transition-all active:scale-90 text-brand-deep"
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -267,13 +331,13 @@ const Home: React.FC = () => {
             ))}
           </div>
         )}
-        {/* زر "عرض المزيد" التفاعلي */}
+
         {products.length < total && (
           <div className="mt-16 flex justify-center">
             <button
-              onClick={handleLoadMore}
+              onClick={() => setSkip((prev) => prev + limit)}
               disabled={loadingMore}
-              className="group relative hover:cursor-pointer px-12 py-4 bg-brand-dark-green text-white rounded-full font-bold overflow-hidden transition-all hover:bg-brand-gold disabled:bg-gray-300"
+              className="group relative hover:cursor-pointer px-12 py-4 bg-brand-dark-green text-white rounded-full font-bold overflow-hidden transition-all active:scale-95 disabled:bg-gray-300"
             >
               <span className={loadingMore ? "opacity-0" : "opacity-100"}>
                 Load More Items

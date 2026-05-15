@@ -14,7 +14,7 @@ const Success: React.FC = () => {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-6">
+    <div className="min-h-screen mt-10 bg-gray-50 flex items-center justify-center px-6">
       <div className="max-w-md w-full bg-white rounded-[2.5rem] shadow-xl p-10 text-center border border-gray-100">
         <div className="flex justify-center mb-6">
           <div className="bg-green-100 p-4 rounded-full">

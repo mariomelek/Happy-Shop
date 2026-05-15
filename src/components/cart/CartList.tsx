@@ -1,4 +1,3 @@
-// src/components/cart/CartList.tsx
 import React from "react";
 import { useCart } from "../../context/CartContext";
 import { Link, useNavigate } from "react-router-dom";
@@ -17,7 +16,7 @@ const CartList: React.FC = () => {
 
   if (cart.length === 0) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-6">
+      <div className="min-h-[60vh] mt-15 flex flex-col items-center justify-center space-y-6">
         <div className="text-6xl">🛍️</div>
         <h2 className="text-3xl font-serif text-brand-deep">
           Your cart is empty
@@ -38,7 +37,7 @@ const CartList: React.FC = () => {
   return (
     <div className="min-h-screen bg-white py-16 px-6">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-4xl font-serif text-brand-deep mb-12 text-center">
+        <h1 className="text-4xl mt-20 font-serif text-brand-deep mb-12 text-center">
           Your Shopping Bag
         </h1>
 

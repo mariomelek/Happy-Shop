@@ -1,188 +1,45 @@
-// import React, { useState } from "react";
-// import { Link, useNavigate } from "react-router-dom";
-// import { useCart } from "../../context/CartContext";
-// import { useTranslation } from "react-i18next"; // 1. استيراد Hook الترجمة
-
-// const Navbar: React.FC = () => {
-//   const [isOpen, setIsOpen] = useState(false);
-//   const [isSearchOpen, setIsSearchOpen] = useState(false);
-//   const [searchQuery, setSearchQuery] = useState("");
-
-//   const { totalItems } = useCart();
-//   const navigate = useNavigate();
-//   const { t, i18n } = useTranslation(); // 2. استخراج t للترجمة و i18n لتغيير اللغة
-
-//   const handleSearch = (e: React.FormEvent) => {
-//     e.preventDefault();
-//     if (searchQuery.trim()) {
-//       navigate(`/search?q=${searchQuery}`);
-//       setIsSearchOpen(false);
-//       setQuery("");
-//     }
-//   };
-
-//   // 3. دالة تبديل اللغة
-//   const toggleLanguage = () => {
-//     const newLang = i18n.language === "en" ? "ar" : "en";
-//     i18n.changeLanguage(newLang);
-//   };
-
-//   return (
-//     <nav className="bg-white border-b border-brand-soft-white sticky top-0 z-50">
-//       <div className="max-w-7xl mx-auto px-6">
-//         <div className="flex justify-between items-center h-20">
-//           {/* الشعار */}
-//           <div className="flex-shrink-0">
-//             <Link
-//               to="/"
-//               className="text-2xl font-serif font-bold text-brand-dark-green tracking-tight"
-//             >
-//               Happy<span className="text-brand-gold">Shop</span>
-//             </Link>
-//           </div>
-
-//           {/* روابط التنقل - استخدمنا t('') لترجمة النصوص */}
-//           <div className="hidden md:flex items-center space-x-10 rtl:space-x-reverse">
-//             <Link
-//               to="/"
-//               className="text-brand-deep hover:text-brand-gold text-sm font-medium transition-colors"
-//             >
-//               {t("nav.home")}
-//             </Link>
-//             <Link
-//               to="/categories"
-//               className="text-brand-deep hover:text-brand-gold text-sm font-medium transition-colors"
-//             >
-//               {t("nav.categories")}
-//             </Link>
-//             <Link
-//               to="/aboutus"
-//               className="text-brand-deep hover:text-brand-gold text-sm font-medium transition-colors"
-//             >
-//               {t("nav.about")}
-//             </Link>
-//             <Link
-//               to="/wishes"
-//               className="text-brand-deep hover:text-brand-gold text-sm font-medium transition-colors"
-//             >
-//               {t("nav.wishlist")} ❤
-//             </Link>
-//           </div>
-
-//           {/* منطقة البحث، اللغة، والأيقونات */}
-//           <div className="flex items-center space-x-6 rtl:space-x-reverse justify-end">
-//             {/* 4. زر تبديل اللغة */}
-//             <button
-//               onClick={toggleLanguage}
-//               className="text-xs font-bold text-brand-dark-green hover:text-brand-gold border border-brand-soft-white px-3 py-1 rounded-full transition-all"
-//             >
-//               {i18n.language === "en" ? "العربية" : "English"}
-//             </button>
-
-//             {/* مربع البحث */}
-//             <form
-//               onSubmit={handleSearch}
-//               className={`relative transition-all duration-300 ${isSearchOpen ? "w-full max-w-xs" : "w-10"}`}
-//             >
-//               {isSearchOpen ? (
-//                 <div className="flex items-center bg-brand-soft-white rounded-full px-4 py-2">
-//                   <input
-//                     autoFocus
-//                     type="text"
-//                     placeholder={t("search_placeholder")}
-//                     className="bg-transparent border-none outline-none text-sm w-full text-brand-deep"
-//                     value={searchQuery}
-//                     onChange={(e) => setSearchQuery(e.target.value)}
-//                   />
-//                   <button type="button" onClick={() => setIsSearchOpen(false)}>
-//                     <svg
-//                       xmlns="http://www.w3.org/2000/svg"
-//                       className="h-4 w-4 text-brand-gray"
-//                       fill="none"
-//                       viewBox="0 0 24 24"
-//                       stroke="currentColor"
-//                     >
-//                       <path
-//                         strokeLinecap="round"
-//                         strokeLinejoin="round"
-//                         strokeWidth={2}
-//                         d="M6 18L18 6M6 6l12 12"
-//                       />
-//                     </svg>
-//                   </button>
-//                 </div>
-//               ) : (
-//                 <button
-//                   type="button"
-//                   onClick={() => setIsSearchOpen(true)}
-//                   className="text-brand-deep hover:text-brand-gold transition-colors p-2"
-//                 >
-//                   <svg
-//                     xmlns="http://www.w3.org/2000/svg"
-//                     className="h-5 w-5"
-//                     fill="none"
-//                     viewBox="0 0 24 24"
-//                     stroke="currentColor"
-//                   >
-//                     <path
-//                       strokeLinecap="round"
-//                       strokeLinejoin="round"
-//                       strokeWidth={2}
-//                       d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-//                     />
-//                   </svg>
-//                 </button>
-//               )}
-//             </form>
-
-//             {/* السلة */}
-//             <Link
-//               to="/cart"
-//               className={`text-brand-deep hover:text-brand-gold transition-colors relative ${isSearchOpen ? "hidden sm:block" : "block"}`}
-//             >
-//               <svg
-//                 xmlns="http://www.w3.org/2000/svg"
-//                 className="h-5 w-5"
-//                 fill="none"
-//                 viewBox="0 0 24 24"
-//                 stroke="currentColor"
-//               >
-//                 <path
-//                   strokeLinecap="round"
-//                   strokeLinejoin="round"
-//                   strokeWidth={2}
-//                   d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-//                 />
-//               </svg>
-//               {totalItems > 0 && (
-//                 <span className="absolute -top-2 -right-2 bg-brand-gold text-white text-[10px] font-bold h-4 w-4 flex items-center justify-center rounded-full animate-bounce">
-//                   {totalItems}
-//                 </span>
-//               )}
-//             </Link>
-//           </div>
-//         </div>
-//       </div>
-//     </nav>
-//   );
-// };
-
-// export default Navbar;import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
-import { useTranslation } from "react-i18next";
 import { auth } from "../../firebase";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
-import { useEffect, useState } from "react";
+import {
+  Search,
+  ShoppingBag,
+  LogOut,
+  Package,
+  X,
+  ChevronDown,
+  User as UserIcon,
+  Heart,
+} from "lucide-react";
+
+// تم فصل الروابط في ثابت خارجي لتحسين الأداء وسهولة التعديل
+const NAV_LINKS = [
+  { name: "Home", path: "/" },
+  { name: "Categories", path: "/categories" },
+  { name: "About Us", path: "/aboutus" },
+];
 
 const Navbar: React.FC = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [user, setUser] = useState<User | null>(null);
+  const [scrolled, setScrolled] = useState(false);
 
   const { totalItems } = useCart();
   const navigate = useNavigate();
-  const { t, i18n } = useTranslation();
+  const location = useLocation();
+
+  // تحسين الأداء باستخدام useCallback لمنع إعادة تعريف الدالة عند كل ريندر
+  const handleScroll = useCallback(() => {
+    setScrolled(window.scrollY > 20);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [handleScroll]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -191,12 +48,12 @@ const Navbar: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  // دالة لاستخراج الاسم الأول
-  const getFirstName = () => {
+  // استخدام useMemo لحساب الاسم فقط عندما يتغير المستخدم
+  const firstName = useMemo(() => {
     if (user?.displayName) return user.displayName.split(" ")[0];
     if (user?.email) return user.email.split("@")[0].split(".")[0];
-    return "User";
-  };
+    return "Guest";
+  }, [user]);
 
   const handleLogout = async () => {
     try {
@@ -210,195 +67,174 @@ const Navbar: React.FC = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/search?q=${searchQuery}`);
+      navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
       setIsSearchOpen(false);
       setSearchQuery("");
     }
   };
 
-  const toggleLanguage = () => {
-    const newLang = i18n.language === "en" ? "ar" : "en";
-    i18n.changeLanguage(newLang);
-  };
-
   return (
-    <nav className="bg-white border-b border-brand-soft-white sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex justify-between items-center h-20">
-          {/* الشعار */}
+    <nav
+      className={`fixed top-0 w-full z-50 transition-all duration-500 ${
+        scrolled
+          ? "bg-white/90 backdrop-blur-md shadow-sm py-2"
+          : "bg-white py-4"
+      } border-b border-gray-100`}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          {/* 1. Logo Section */}
           <div className="flex-shrink-0">
-            <Link
-              to="/"
-              className="text-2xl font-serif font-bold text-brand-dark-green tracking-tight"
-            >
-              Happy<span className="text-brand-gold">Shop</span>
+            <Link to="/" className="group flex items-center gap-2">
+              <div className="w-10 h-10 bg-brand-deep rounded-xl flex items-center justify-center transition-transform group-hover:rotate-12">
+                <ShoppingBag className="text-white" size={20} />
+              </div>
+              <span className="text-2xl font-serif font-black text-brand-deep tracking-tight">
+                Shopping<span className="text-brand-gold">Faster</span>
+              </span>
             </Link>
           </div>
 
-          {/* روابط التنقل */}
-          <div className="hidden md:flex items-center space-x-10 rtl:space-x-reverse">
-            <Link
-              to="/"
-              className="text-brand-deep hover:text-brand-gold text-sm font-medium transition-colors"
-            >
-              {t("nav.home")}
-            </Link>
-            <Link
-              to="/categories"
-              className="text-brand-deep hover:text-brand-gold text-sm font-medium transition-colors"
-            >
-              {t("nav.categories")}
-            </Link>
-            <Link
-              to="/aboutus"
-              className="text-brand-deep hover:text-brand-gold text-sm font-medium transition-colors"
-            >
-              {t("nav.about")}
-            </Link>
-          </div>
-
-          {/* منطقة البحث، اللغة، واليوزر */}
-          <div className="flex items-center space-x-5 rtl:space-x-reverse">
-            {/* أيقونة البحث */}
-            <div className="relative flex items-center">
-              {isSearchOpen && (
-                <form
-                  onSubmit={handleSearch}
-                  className="absolute right-0 rtl:left-0 top-1/2 -translate-y-1/2 bg-white border border-gray-100 rounded-full px-3 py-1 shadow-sm flex items-center w-48 transition-all"
-                >
-                  <input
-                    autoFocus
-                    type="text"
-                    className="text-xs outline-none w-full bg-transparent"
-                    placeholder={t("search_placeholder") || "Search..."}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setIsSearchOpen(false)}
-                    className="text-gray-400"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-3 w-3"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                </form>
-              )}
-              <button
-                onClick={() => setIsSearchOpen(!isSearchOpen)}
-                className="text-brand-deep hover:text-brand-gold transition-colors"
+          {/* 2. Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-1 bg-gray-100/50 p-1.5 rounded-2xl border border-gray-100">
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.path}
+                to={link.path}
+                className={`px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all duration-300 ${
+                  location.pathname === link.path
+                    ? "bg-white text-brand-gold shadow-sm"
+                    : "text-gray-500 hover:text-brand-deep"
+                }`}
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+                {link.name}
+              </Link>
+            ))}
+          </div>
+
+          {/* 3. Action Icons */}
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Search Bar - Animated Expansion */}
+            <div className="relative hidden sm:flex items-center">
+              <form
+                onSubmit={handleSearch}
+                className={`flex items-center bg-gray-100 rounded-full transition-all duration-300 overflow-hidden ${
+                  isSearchOpen
+                    ? "w-64 px-3 ring-2 ring-brand-gold/20"
+                    : "w-10 h-10"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => setIsSearchOpen(!isSearchOpen)}
+                  className="min-w-[40px] h-10 flex items-center justify-center text-gray-500 hover:text-brand-gold"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </button>
+                  {isSearchOpen ? <X size={18} /> : <Search size={20} />}
+                </button>
+                <input
+                  type="text"
+                  className="bg-transparent border-none w-full text-sm focus:ring-0 outline-none placeholder:text-gray-400"
+                  placeholder="Find your style..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </form>
             </div>
 
-            {/* زر تبديل اللغة
-            <button
-              onClick={toggleLanguage}
-              className="text-[10px] font-bold text-brand-dark-green border border-brand-soft-white px-2 py-1 rounded hover:bg-brand-soft-white transition-all"
+            {/* Wishlist Link (إضافة قيمة مضافة للـ Navbar) */}
+            <Link
+              to="/wishlist"
+              className="p-2 text-gray-500 hover:text-red-500 transition-colors hidden xs:block"
             >
-              {i18n.language === "en" ? "العربية" : "English"}
-            </button> */}
+              <Heart size={20} />
+            </Link>
 
-            {/* قسم المستخدم */}
-            <div className="flex items-center gap-4 border-l rtl:border-l-0 rtl:border-r border-gray-100 pl-4 rtl:pl-0 rtl:pr-4">
+            {/* Cart Icon with improved badge */}
+            <Link
+              to="/cart"
+              className="relative p-2.5 bg-brand-gold/10 rounded-xl text-brand-gold hover:bg-brand-gold hover:text-white transition-all shadow-sm active:scale-95"
+            >
+              <ShoppingBag size={20} />
+              {totalItems > 0 && (
+                <span className="absolute -top-1 -right-1 bg-brand-deep text-white text-[10px] font-bold h-5 min-w-[20px] px-1 flex items-center justify-center rounded-full border-2 border-white animate-in zoom-in duration-300">
+                  {totalItems}
+                </span>
+              )}
+            </Link>
+
+            <div className="h-6 w-[1px] bg-gray-200 mx-1"></div>
+
+            {/* User Profile / Login */}
+            <div className="relative group">
               {user ? (
-                <div className="flex items-center gap-2 group relative cursor-pointer">
-                  <div className="text-right hidden sm:block">
-                    <p className="text-[9px] text-gray-400 uppercase leading-none">
-                      Welcome
+                <div className="flex items-center gap-2 cursor-pointer p-1 rounded-xl hover:bg-gray-50 transition-all border border-transparent hover:border-gray-100">
+                  <div className="h-9 w-9 rounded-lg ring-2 ring-brand-gold/5 overflow-hidden shadow-sm">
+                    <img
+                      src={
+                        user.photoURL ||
+                        `https://ui-avatars.com/api/?name=${firstName}&background=F4F1EA&color=C5A059&bold=true`
+                      }
+                      alt="Profile"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="hidden lg:block text-left">
+                    <p className="text-[10px] text-gray-400 font-bold leading-none">
+                      MY ACCOUNT
                     </p>
-                    <p className="text-xs font-bold text-brand-deep leading-tight capitalize">
-                      {getFirstName()}
+                    <p className="text-xs font-black text-brand-deep truncate">
+                      {firstName}
                     </p>
                   </div>
+                  <ChevronDown
+                    size={14}
+                    className="text-gray-400 group-hover:rotate-180 transition-transform"
+                  />
 
-                  <button className="h-8 w-8 rounded-full bg-brand-soft-white flex items-center justify-center text-brand-gold border border-brand-gold/10 group-hover:bg-brand-gold group-hover:text-white transition-all">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
+                  {/* Dropdown Menu - Improved Glassmorphism */}
+                  <div className="absolute top-full right-0 mt-2 w-56 bg-white/95 backdrop-blur-xl shadow-2xl rounded-2xl py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all border border-gray-100 z-50 transform origin-top-right scale-95 group-hover:scale-100">
+                    <div className="px-4 py-3 border-b border-gray-50 mb-1">
+                      <p className="text-sm font-black text-brand-deep">
+                        Hello, {firstName}!
+                      </p>
+                      <p className="text-[10px] text-gray-400 truncate">
+                        {user.email}
+                      </p>
+                    </div>
+
+                    <Link
+                      to="/profile"
+                      className="flex items-center gap-3 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-brand-gold transition-colors"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                      />
-                    </svg>
-                  </button>
+                      <UserIcon size={16} /> Profile Settings
+                    </Link>
+                    <Link
+                      to="/orders"
+                      className="flex items-center gap-3 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-brand-gold transition-colors"
+                    >
+                      <Package size={16} /> Order History
+                    </Link>
 
-                  <div className="absolute top-full right-0 mt-2 w-32 bg-white shadow-xl rounded-lg py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all border border-gray-50 z-50">
+                    <div className="my-1 border-t border-gray-50"></div>
+
                     <button
                       onClick={handleLogout}
-                      className="w-full text-left px-4 py-2 text-xs text-red-500 hover:bg-red-50 font-bold"
+                      className="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
                     >
-                      {t("logout") || "Logout"}
+                      <LogOut size={16} /> Sign Out
                     </button>
                   </div>
                 </div>
               ) : (
                 <Link
                   to="/login"
-                  className="text-xs font-bold text-brand-deep hover:text-brand-gold transition-colors uppercase tracking-tight"
+                  className="flex items-center gap-2 bg-brand-deep text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-brand-gold transition-all shadow-lg shadow-brand-deep/10 active:scale-95"
                 >
-                  {t("login") || "Login"}
+                  <UserIcon size={14} />
+                  Login
                 </Link>
               )}
             </div>
-
-            {/* السلة */}
-            <Link
-              to="/cart"
-              className="text-brand-deep hover:text-brand-gold transition-colors relative"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-                />
-              </svg>
-              {totalItems > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 bg-brand-gold text-white text-[9px] font-bold h-4 w-4 flex items-center justify-center rounded-full">
-                  {totalItems}
-                </span>
-              )}
-            </Link>
           </div>
         </div>
       </div>
