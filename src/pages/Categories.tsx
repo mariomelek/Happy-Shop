@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import { useCart } from "../context/CartContext";
-import { useWishlist } from "../context/WishlistContext"; // افترضت وجود Context للـ Wishlist
+import { useWishlist } from "../context/WishlistContext";
 import { doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import toast, { Toaster } from "react-hot-toast";
 import { auth, db } from "../firebase";
@@ -13,8 +13,8 @@ const Categories: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [loading, setLoading] = useState<boolean>(true);
 
-  // حالة لمتابعة المنتجات التي أضيفت للسلة لإظهار العداد
-  const [addedToCartIds, setAddedToCartIds] = useState<number[]>([]);
+  // حالة لمتابعة المنتجات التي أضيفت للسلة (إذا كنت بحاجه لتغيير نص الزر لاحقاً)
+  const [, setAddedToCartIds] = useState<number[]>([]);
 
   const { addToCart } = useCart();
   const { addToWishlist, isInWishlist } = useWishlist();
@@ -54,7 +54,7 @@ const Categories: React.FC = () => {
     fetchProducts();
   }, [activeCategory]);
 
-  // 3. منطق السلة (إظهار العداد و Toast)
+  // 3. منطق السلة
   const handleCartClick = (product: any) => {
     addToCart(product);
     setAddedToCartIds((prev) => [...prev, product.id]);
@@ -65,7 +65,7 @@ const Categories: React.FC = () => {
     });
   };
 
-  // 4. منطق القلب (Wishlist + Firebase)
+  // 4. منطق الـ Wishlist
   const handleWishlist = useCallback(
     async (product: any) => {
       const user = auth.currentUser;
@@ -83,11 +83,11 @@ const Categories: React.FC = () => {
       try {
         if (alreadyIn) {
           await updateDoc(userRef, { wishlist: arrayRemove(product.id) });
-          addToWishlist(product); // تحديث الحالة محلياً
+          addToWishlist(product);
           toast("Removed from wishlist", { icon: "📁" });
         } else {
           await updateDoc(userRef, { wishlist: arrayUnion(product.id) });
-          addToWishlist(product); // تحديث الحالة محلياً
+          addToWishlist(product);
           toast.success("Saved to your profile!", {
             icon: "❤️",
             style: {
@@ -109,9 +109,9 @@ const Categories: React.FC = () => {
     <div className="min-h-screen bg-white py-12 px-6">
       <Toaster position="bottom-center" />
 
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto ">
         <h1 className="text-4xl font-serif text-brand-deep mb-10 text-center">
-          Shop by <span className="text-brand-gold">Category</span>
+          Shop by <span className="  text-brand-gold">Category</span>
         </h1>
 
         {/* أزرار الفئات */}
@@ -149,14 +149,13 @@ const Categories: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
             {products.map((product) => {
-              const isAdded = addedToCartIds.includes(product.id);
               const inWishlist = isInWishlist(product.id);
 
               return (
                 <div key={product.id} className="group relative">
                   <div className="relative aspect-[3/4] bg-brand-soft-white rounded-[2.5rem] overflow-hidden mb-4 transition-all duration-500 group-hover:shadow-2xl">
-                    {/* أزرار الإجراءات (القلب) */}
-                    <div className="absolute top-5 right-5 z-20 flex flex-col gap-3  group-hover:opacity-100 transition-all duration-500">
+                    {/* زر المفضلة */}
+                    <div className="absolute top-5 right-5 z-20 flex flex-col gap-3 group-hover:opacity-100 transition-all duration-500">
                       <button
                         onClick={() => handleWishlist(product)}
                         className={`p-3 rounded-full shadow-lg transition-colors ${inWishlist ? "bg-red-500 text-white" : "bg-white text-brand-deep hover:text-red-500"}`}
@@ -178,6 +177,7 @@ const Categories: React.FC = () => {
                       </button>
                     </div>
 
+                    {/* رابط التفاصيل ويحتوي على الصورة */}
                     <Link
                       to={`/product/${product.id}`}
                       className="block h-full"
@@ -193,44 +193,36 @@ const Categories: React.FC = () => {
                         alt={product.title}
                         className="w-full h-full object-contain p-8 group-hover:scale-110 transition duration-700"
                       />
-
-                      {/* العداد (يظهر عند الـ Hover أو عند إضافة المنتج للسلة) */}
-                      <div
-                        className={`absolute bottom-4 inset-x-4 bg-brand-dark-green/90 backdrop-blur-md text-white p-3 rounded-2xl flex justify-around text-center transition-all duration-500 transform ${isAdded ? "opacity-100 translate-y-0" : " group-hover:opacity-100 translate-y-4 group-hover:translate-y-0"}`}
-                      >
-                        <div>
-                          <p className="text-xs font-bold">02</p>
-                          <p className="text-[7px] opacity-70 uppercase">
-                            Days
-                          </p>
-                        </div>
-                        <div className="w-[1px] h-6 bg-white/20 self-center"></div>
-                        <div>
-                          <p className="text-xs font-bold">14</p>
-                          <p className="text-[7px] opacity-70 uppercase">Hrs</p>
-                        </div>
-                        <div className="w-[1px] h-6 bg-white/20 self-center"></div>
-                        <div>
-                          <p className="text-xs font-bold">55</p>
-                          <p className="text-[7px] opacity-70 uppercase">
-                            Mins
-                          </p>
-                        </div>
-                      </div>
                     </Link>
 
-                    {/* زر Add to Cart (يختفي إذا أظهرنا العداد بعد الضغط) */}
-                    {!isAdded && (
-                      <button
-                        onClick={() => handleCartClick(product)}
-                        className="absolute inset-x-0 bottom-0 bg-brand-gold text-brand-deep font-bold py-4 text-xs tracking-widest uppercase opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-30"
-                      >
-                        Add to Cart
-                      </button>
-                    )}
+                    {/* 1. العداد: ظاهر دائمًا، ويختفي (opacity-0) عند الـ Hover على المجموعة */}
+                    <div className="absolute bottom-4 inset-x-4 bg-brand-dark-green/90 backdrop-blur-md text-white p-3 rounded-2xl flex justify-around text-center transition-all duration-300 transform opacity-100 scale-100 group-hover:opacity-0 group-hover:scale-95 z-20 pointer-events-auto group-hover:pointer-events-none">
+                      <div>
+                        <p className="text-xs font-bold">02</p>
+                        <p className="text-[7px] opacity-70 uppercase">Days</p>
+                      </div>
+                      <div className="w-[1px] h-6 bg-white/20 self-center"></div>
+                      <div>
+                        <p className="text-xs font-bold">14</p>
+                        <p className="text-[7px] opacity-70 uppercase">Hrs</p>
+                      </div>
+                      <div className="w-[1px] h-6 bg-white/20 self-center"></div>
+                      <div>
+                        <p className="text-xs font-bold">55</p>
+                        <p className="text-[7px] opacity-70 uppercase">Mins</p>
+                      </div>
+                    </div>
+
+                    {/* 2. زر Add to Cart: مخفي دائمًا، ويظهر (opacity-100) فقط عند الـ Hover */}
+                    <button
+                      onClick={() => handleCartClick(product)}
+                      className="absolute bottom-4 inset-x-4 hover:cursor-pointer bg-brand-dark-green text-white font-bold p-3 rounded-2xl text-xs tracking-widest uppercase text-center opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-300 z-30 shadow-lg pointer-events-none group-hover:pointer-events-auto"
+                    >
+                      Add to Cart
+                    </button>
                   </div>
 
-                  {/* تفاصيل المنتج */}
+                  {/* تفاصيل المنتج السفلية */}
                   <div className="px-3">
                     <div className="flex justify-between items-start mb-1">
                       <h3 className="font-bold text-brand-deep truncate flex-1 group-hover:text-brand-gold transition text-sm">

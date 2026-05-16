@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import { useCart } from "../context/CartContext";
@@ -6,6 +6,7 @@ import { useWishlist } from "../context/WishlistContext";
 import toast from "react-hot-toast";
 import { arrayRemove, arrayUnion, doc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
+import { ChevronLeft, ChevronRight } from "lucide-react"; // تأكد من تثبيتها
 
 export interface DummyProduct {
   id: number;
@@ -26,11 +27,25 @@ const Home: React.FC = () => {
   const [skip, setSkip] = useState<number>(0);
   const [total, setTotal] = useState<number>(0);
 
+  // مراجع وحالات التحكم بأسهم شريط التصنيفات
+  const categoriesRef = useRef<HTMLElement>(null);
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(false);
+
   const limit = 12;
   const { addToWishlist, isInWishlist } = useWishlist();
   const { addToCart } = useCart();
 
-  // جلب الفئات - تم تحسينها لتنفيذها مرة واحدة فقط
+  // فحص حالة التمرير لإظهار أو إخفاء الأسهم
+  const checkScrollButtons = () => {
+    if (categoriesRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = categoriesRef.current;
+      setShowLeftArrow(scrollLeft > 2);
+      setShowRightArrow(scrollLeft + clientWidth < scrollWidth - 2);
+    }
+  };
+
+  // جلب الفئات
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -45,7 +60,21 @@ const Home: React.FC = () => {
     fetchCategories();
   }, []);
 
-  // جلب المنتجات - مع إضافة AbortController لإلغاء الطلبات المعلقة عند تغيير الفئة
+  // مراقبة أحداث السكرول والتنظيف للأسهم
+  useEffect(() => {
+    const el = categoriesRef.current;
+    if (el) {
+      checkScrollButtons();
+      el.addEventListener("scroll", checkScrollButtons);
+      window.addEventListener("resize", checkScrollButtons);
+    }
+    return () => {
+      if (el) el.removeEventListener("scroll", checkScrollButtons);
+      window.removeEventListener("resize", checkScrollButtons);
+    };
+  }, [categories]);
+
+  // جلب المنتجات
   useEffect(() => {
     const controller = new AbortController();
 
@@ -67,6 +96,9 @@ const Home: React.FC = () => {
             : [...prev, ...response.data.products],
         );
         setTotal(response.data.total);
+
+        // إعادة فحص الأسهم بعد تحديث البيانات للتأكد من دقة الأبعاد
+        setTimeout(checkScrollButtons, 100);
       } catch (error) {
         if (!axios.isCancel(error)) {
           toast.error("Failed to load products");
@@ -78,10 +110,20 @@ const Home: React.FC = () => {
     };
 
     fetchProducts();
-    return () => controller.abort(); // تنظيف الطلب عند مسح المكون
+    return () => controller.abort();
   }, [activeCategory, skip]);
 
-  // دالة الإضافة للسلة - تحسين الأداء بـ useCallback
+  // دالة تحريك السكرول عند النقر على الأسهم
+  const scrollCategories = (direction: "left" | "right") => {
+    if (categoriesRef.current) {
+      const scrollAmount = 250;
+      categoriesRef.current.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      });
+    }
+  };
+
   const handleAddToCart = useCallback(
     (product: DummyProduct) => {
       addToCart(product);
@@ -102,12 +144,10 @@ const Home: React.FC = () => {
     [addToCart],
   );
 
-  // دالة الإضافة للمفضلة - تحسين الأداء بـ useCallback
   const handleWishlist = useCallback(
     async (product: DummyProduct) => {
       const user = auth.currentUser;
 
-      // 1. التحقق من تسجيل الدخول
       if (!user) {
         toast.error("Please login to sync your wishlist", {
           style: { borderRadius: "10px", background: "#333", color: "#fff" },
@@ -120,21 +160,15 @@ const Home: React.FC = () => {
 
       try {
         if (alreadyIn) {
-          // 2. إذا كان موجوداً: نحذفه من الفايرستور
           await updateDoc(userRef, {
             wishlist: arrayRemove(product.id),
           });
-
-          // تحديث الحالة محلياً (Context)
           addToWishlist(product);
           toast("Removed from wishlist", { icon: "📁" });
         } else {
-          // 3. إذا لم يكن موجوداً: نضيفه للفايرستور
           await updateDoc(userRef, {
             wishlist: arrayUnion(product.id),
           });
-
-          // تحديث الحالة محلياً (Context)
           addToWishlist(product);
           toast.success("Saved to your profile!", {
             icon: "❤️",
@@ -154,7 +188,7 @@ const Home: React.FC = () => {
   );
 
   const handleCategoryChange = (cat: string) => {
-    if (cat === activeCategory) return; // منع إعادة التحميل إذا كانت نفس الفئة
+    if (cat === activeCategory) return;
     setActiveCategory(cat);
     setSkip(0);
     setProducts([]);
@@ -169,21 +203,47 @@ const Home: React.FC = () => {
         </h1>
       </header>
 
-      <nav className="max-w-7xl mx-auto px-6 mt-10 flex gap-3 overflow-x-auto pb-4 no-scrollbar border-b border-gray-50">
-        {categories.map((cat) => (
+      {/* شريط التصنيفات المطور مع الأسهم الذكية */}
+      <div className="relative max-w-7xl mx-auto px-6 mt-10 group/nav">
+        {showLeftArrow && (
           <button
-            key={cat}
-            onClick={() => handleCategoryChange(cat)}
-            className={`px-6 py-2 rounded-full text-sm whitespace-nowrap transition-all duration-300 capitalize ${
-              activeCategory === cat
-                ? "bg-brand-dark-green text-white shadow-md"
-                : "bg-brand-soft-white text-brand-deep border border-gray-100 hover:border-brand-gold"
-            }`}
+            onClick={() => scrollCategories("left")}
+            className="absolute left-7 top-1/3 -translate-y-1/2 z-40 bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-md border border-gray-100 text-brand-deep hover:text-brand-gold hover:scale-110 active:scale-95 transition-all duration-300"
+            aria-label="Scroll Left"
           >
-            {cat.replace(/-/g, " ")}
+            <ChevronLeft size={20} />
           </button>
-        ))}
-      </nav>
+        )}
+
+        <nav
+          ref={categoriesRef}
+          className="flex gap-3 overflow-x-auto pb-4 no-scrollbar border-b border-gray-50 scroll-smooth"
+        >
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => handleCategoryChange(cat)}
+              className={`px-6 py-2 rounded-full text-sm whitespace-nowrap transition-all duration-300 capitalize flex-shrink-0 ${
+                activeCategory === cat
+                  ? "bg-brand-dark-green text-white shadow-md"
+                  : "bg-brand-soft-white text-brand-deep border border-gray-100 hover:border-brand-gold"
+              }`}
+            >
+              {cat.replace(/-/g, " ")}
+            </button>
+          ))}
+        </nav>
+
+        {showRightArrow && (
+          <button
+            onClick={() => scrollCategories("right")}
+            className="absolute right-7 top-1/3 -translate-y-1/2 z-40 bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-md border border-gray-100 text-brand-deep hover:text-brand-gold hover:scale-110 active:scale-95 transition-all duration-300"
+            aria-label="Scroll Right"
+          >
+            <ChevronRight size={20} />
+          </button>
+        )}
+      </div>
 
       <main className="max-w-7xl mx-auto px-6 mt-12 pb-20">
         {loading ? (
@@ -194,28 +254,32 @@ const Home: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8">
             {products.map((product) => (
               <div key={product.id} className="group relative">
-                <div className="relative rounded-3xl overflow-hidden aspect-[4/5] bg-brand-soft-white mb-4">
+                <div className="relative rounded-3xl overflow-hidden aspect-[4/5] bg-brand-soft-white mb-4 transition-all duration-500 group-hover:shadow-2xl">
                   <Link to={`/product/${product.id}`} className="block h-full">
                     <img
                       src={product.thumbnail}
                       alt={product.title}
-                      loading="lazy" // تحسين أداء تحميل الصور
+                      loading="lazy"
                       className="w-full h-full object-contain p-6 group-hover:scale-110 transition duration-700"
                     />
                   </Link>
 
-                  <div className="absolute top-4 left-4 bg-brand-dark-green/90 backdrop-blur-sm text-white text-[10px] py-1 px-3 rounded-full z-10 font-bold uppercase">
-                    {Math.round(product.discountPercentage)}% off
-                  </div>
+                  {product.discountPercentage > 0 && (
+                    <div className="absolute top-4 left-4 bg-brand-dark-green/90 backdrop-blur-sm text-white text-[10px] py-1 px-3 rounded-full z-10 font-bold uppercase">
+                      {Math.round(product.discountPercentage)}% off
+                    </div>
+                  )}
 
+                  {/* 1. زر Add to Cart: مخفي افتراضياً ويظهر عند الـ Hover مع تبديل الـ Pointer Events */}
                   <button
                     onClick={() => handleAddToCart(product)}
-                    className="absolute bottom-4 inset-x-4 bg-brand-deep hover:cursor-pointer text-white py-3 rounded-2xl font-bold text-sm opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-y-4 group-hover:translate-y-0 z-30 shadow-2xl hover:bg-brand-dark-green"
+                    className="absolute bottom-4 inset-x-4 bg-brand-deep hover:cursor-pointer text-white py-3 rounded-2xl font-bold text-sm opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-300 z-30 shadow-2xl hover:bg-brand-dark-green pointer-events-none group-hover:pointer-events-auto"
                   >
                     Add to Cart
                   </button>
 
-                  <div className="absolute bottom-4 inset-x-4 bg-brand-dark-green/90 backdrop-blur-md text-white p-3 rounded-2xl flex justify-around text-center transition-all duration-500 z-20 group-hover:opacity-0 group-hover:pointer-events-none">
+                  {/* 2. العداد التنازلي: ظاهر افتراضياً ويختفي بسلاسة عند الـ Hover */}
+                  <div className="absolute bottom-4 inset-x-4 bg-brand-dark-green/90 backdrop-blur-md text-white p-3 rounded-2xl flex justify-around text-center transition-all duration-300 transform opacity-100 scale-100 group-hover:opacity-0 group-hover:scale-95 z-20 pointer-events-auto group-hover:pointer-events-none">
                     <div>
                       <p className="text-xs font-bold">02</p>
                       <p className="text-[8px] opacity-70 uppercase tracking-tighter">
@@ -238,6 +302,7 @@ const Home: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* زر المفضلة الـ Wishlist */}
                   <button
                     onClick={(e) => {
                       e.preventDefault();
@@ -266,6 +331,7 @@ const Home: React.FC = () => {
                   </button>
                 </div>
 
+                {/* تفاصيل المنتج */}
                 <div className="px-2">
                   <div className="flex justify-between items-center mb-1">
                     <p className="text-[14px] text-brand-gold font-bold uppercase tracking-tighter">
@@ -332,6 +398,7 @@ const Home: React.FC = () => {
           </div>
         )}
 
+        {/* زر تحميل المزيد */}
         {products.length < total && (
           <div className="mt-16 flex justify-center">
             <button
