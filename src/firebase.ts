@@ -4,13 +4,13 @@ import { getFirestore } from "firebase/firestore"; // 1. إضافة استيرا
 import { GoogleAuthProvider } from "firebase/auth";
 // إعدادات Firebase الخاصة بك
 const firebaseConfig = {
-  apiKey: "AIzaSyCbcSFOSHXLhUEqsTMP1JrwRVqkEtsN33U",
-  authDomain: "perfume-store-1b50f.firebaseapp.com",
-  projectId: "perfume-store-1b50f",
-  storageBucket: "perfume-store-1b50f.firebasestorage.app",
-  messagingSenderId: "1088529043737",
-  appId: "1:1088529043737:web:612c284783486a82397588",
-  measurementId: "G-477HWMWV7T",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 // تهيئة التطبيق
 const app = initializeApp(firebaseConfig);
